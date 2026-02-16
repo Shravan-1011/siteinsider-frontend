@@ -22,7 +22,7 @@ function Register() {
     e.preventDefault();
 
     try {
-      const res = await api.post("/api/auth/signup", form);
+      const res = await api.post("/auth/signup", form);
       console.log(res.data);
 
       localStorage.setItem("token", res.data.token);
