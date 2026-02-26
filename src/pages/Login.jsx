@@ -24,6 +24,7 @@ function Login() {
       const res = await api.post("/auth/login", form);
 
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("publicId", res.data.publicId);
 
       navigate("/dashboard");
     } catch (err) {
@@ -33,7 +34,7 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+    <div className="min-h-screen bg-gradient-to-b from-[#0B1120] via-[#0E1628] to-[#0B1120] flex items-center justify-center px-10 py-20 text-white">
       <form
         onSubmit={handleSubmit}
         className="bg-gray-800 p-9 rounded-xl w-96 space-y-6"

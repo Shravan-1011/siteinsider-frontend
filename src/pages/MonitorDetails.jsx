@@ -1,7 +1,9 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
 import api from "../services/api";
+
 import {
   LineChart,
   Line,
@@ -28,41 +30,47 @@ function MonitorDetail() {
 const [limit, setLimit] = useState(50);
 const [range, setRange] = useState("24h");
 const [now, setNow] = useState(Date.now());
+const [selectedRegion, setSelectedRegion] = useState("India");
 
   
 
 
  const fetchData = async () => {
   try {
-    const monitorRes = await api.get(`/monitors/${id}`);
-    setMonitor(monitorRes.data);
-
-    const analyticsRes = await api.get(
-      `/monitors/${id}/analytics?limit=${limit}&range=${range}`
+    const res = await api.get(
+      `/monitors/${id}/detail?limit=${limit}&range=${range}&region=${selectedRegion}`
     );
+    
 
-    const incidentsRes = await api.get(
-  `/monitors/${id}/incidents`
-);
-
-    setStatusGraph(analyticsRes.data.statusGraph);
-    setResponseGraph(analyticsRes.data.responseTimeGraph);
-    setUptime(analyticsRes.data.uptimePercentage);
-    setTotalChecks(analyticsRes.data.totalChecks);
-    setIncidents(incidentsRes.data);
+    setMonitor(res.data.monitor);
+    setStatusGraph(res.data.analytics.statusGraph);
+    setResponseGraph(res.data.analytics.responseTimeGraph);
+    setUptime(res.data.analytics.uptimePercentage);
+    setIncidents(res.data.incidents);
+    setTotalChecks(res.data.analytics.totalChecks);
+    
 
   } catch (err) {
-    console.log(err);
+    console.log("FETCH ERROR:", err);
   }
 };
 
-  useEffect(() => {
+useEffect(() => {
   fetchData();
+}, [id, limit, range, selectedRegion]);
+ 
 
-  const interval = setInterval(fetchData, 30000);
-  return () => clearInterval(interval);
+useEffect(() => {
+  const socket = io("http://localhost:5000");
 
-}, [id, limit, range]);
+  socket.on("statusUpdate", (update) => {
+    if (update.monitorId === id) {
+      fetchData(); // only refresh this monitor's data
+    }
+  });
+
+  return () => socket.disconnect();
+}, [id, limit, range, selectedRegion]);
 
 useEffect(() => {
   const timer = setInterval(() => {
@@ -145,28 +153,29 @@ const liveDowntime =
 
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-10">
+    <div className="min-h-screen bg-gray-900 text-gray-100 px-4 sm:px-8 lg:px-12 py-8">
 
          {/* Back Button */}
       <button
         onClick={() => navigate("/dashboard")}
-        className="mb-6 bg-gray-700 px-4 py-2 rounded hover:bg-gray-600"
+        className="mb-8 bg-gray-900 border border-gray-700 px-4 py-2 rounded-xl hover:bg-gray-800 transition text-sm"
       >
         ← Back
       </button>
 
 
        {/* Monitor Info */}
-      <h1 className="text-3xl font-bold mb-2">
-        {monitor.name}
-      </h1>
+      <div className="mb-6">
+  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+    {monitor.name}
+  </h1>
+  <p className="text-gray-400 mt-2 text-sm sm:text-base">
+    {monitor.url}
+  </p>
+</div>
 
-      <p className="text-gray-400 mb-6">
-        {monitor.url}
-      </p>
 
-
-    <div className="flex gap-4 mb-8">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-10">
   {monitor.isActive ? (
     <button
       onClick={async () => {
@@ -199,6 +208,21 @@ const liveDowntime =
   >
     Delete
   </button>
+  <div className="flex flex-wrap gap-2 mt-2">
+  {monitor.regions.map((region) => (
+    <button
+      key={region}
+      onClick={() => setSelectedRegion(region)}
+      className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition ${
+        selectedRegion === region
+          ? "bg-blue-600 text-white"
+          : "bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
+      }`}
+    >
+      {region}
+    </button>
+  ))}
+</div>
 </div>
 
 
@@ -250,12 +274,12 @@ const liveDowntime =
 
 
             {/* Response Time Chart */}
-<div className="bg-gray-800 p-6 rounded-lg mb-8">
+<div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl mb-10">
   <h2 className="text-xl font-semibold mb-4">
     Response Time (ms)
   </h2>
 
-  <div className="w-full h-72">
+  <div className="bg-gray-800 p-6 rounded h-72 sm:h-80">
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={responseGraph}>
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -296,12 +320,12 @@ const liveDowntime =
 
 
 {/* Status History Chart */}
-<div className="bg-gray-800 p-6 rounded-lg mb-8">
+<div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl mb-10">
   <h2 className="text-xl font-semibold mb-4">
     Status History
   </h2>
 
-  <div className="w-full h-72">
+  <div className="bg-gray-800 p-6 rounded h-72 sm:h-80">
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={statusChartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -365,7 +389,7 @@ const liveDowntime =
       return (
         <div
           key={incident._id}
-          className={`p-6 rounded-lg ${
+          className={`p-6 rounded-2xl border ${
             incident.isResolved
               ? "bg-gray-800"
               : "bg-red-900 border border-red-500"
@@ -418,7 +442,7 @@ const liveDowntime =
 
 
 
-<div className="grid grid-cols-3 gap-6 mb-8">
+<div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10 pt-5">
   <div className="bg-gray-800 p-6 rounded-lg">
     <p className="text-gray-400 text-sm">Uptime</p>
     <p className="text-2xl font-semibold text-green-400">
@@ -445,7 +469,7 @@ const liveDowntime =
 
 
 
-<div className="flex justify-between items-end-safe mb-8">
+<div className="flex flex-col sm:flex-row sm:justify-between gap-4 mb-10">
 
 
   {/* Filters */}
@@ -455,7 +479,7 @@ const liveDowntime =
     <select
       value={range}
       onChange={(e) => setRange(e.target.value)}
-      className="bg-gray-800 border border-gray-600 px-4 py-2 rounded"
+      className="bg-gray-800 border border-gray-600 px-4 py-2 rounded-xl w-full sm:w-auto"
     >
       <option value="24h">Last 24 Hours</option>
       <option value="7d">Last 7 Days</option>
@@ -484,7 +508,7 @@ const liveDowntime =
 
 
             {/* Recent Status Checks */}
-      <div className="bg-gray-800 p-6 rounded-lg">
+      <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl">
         <h2 className="text-xl font-semibold mb-4">
           Recent Checks
         </h2>
@@ -493,7 +517,7 @@ const liveDowntime =
           {statusGraph.map((item, index) => (
             <div
               key={index}
-              className="flex justify-between bg-gray-700 p-3 rounded"
+              className="flex flex-col sm:flex-row sm:justify-between bg-gray-800 p-3 rounded-lg"
             >
               <span>
                 {new Date(item.time).toLocaleString()}

@@ -23,7 +23,7 @@ function Register() {
 
     try {
       const res = await api.post("/auth/signup", form);
-      console.log(res.data);
+      
 
       localStorage.setItem("token", res.data.token);
 
@@ -35,7 +35,7 @@ function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+    <div className="min-h-screen bg-gradient-to-b from-[#0B1120] via-[#0E1628] to-[#0B1120] flex items-center justify-center px-10 py-20 text-white">
       <form
         onSubmit={handleSubmit}
         className="bg-gray-800 p-8 rounded-xl w-96 space-y-4"
@@ -72,7 +72,7 @@ function Register() {
 
         <p className="text-sm text-center">
           Already have an account?{" "}
-          <Link to="/" className="text-green-400">
+          <Link to="/login" className="text-green-400">
             Login
           </Link>
         </p>
