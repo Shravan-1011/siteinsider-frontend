@@ -26,6 +26,7 @@ function Register() {
       
 
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("publicId", res.data.publicId);
 
       navigate("/dashboard");
     } catch (err) {
